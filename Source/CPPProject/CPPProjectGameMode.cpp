@@ -13,3 +13,13 @@ ACPPProjectGameMode::ACPPProjectGameMode()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 }
+
+
+void ACPPProjectGameMode::OnPlayerKilled(AController* Controller)
+{
+	FVector Location = FVector(-400.0f, 50.0f, 200.0f);
+	if (APawn* Pawn = GetWorld()->SpawnActor<APawn>(DefaultPawnClass, Location, FRotator::ZeroRotator))
+	{
+		Controller->Possess(Pawn);
+	}
+}

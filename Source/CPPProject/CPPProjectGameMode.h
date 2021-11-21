@@ -13,6 +13,10 @@ class ACPPProjectGameMode : public AGameModeBase
 
 public:
 	ACPPProjectGameMode();
+
+	UFUNCTION()
+	void OnPlayerKilled(AController* Controller);
+
 };
 
 

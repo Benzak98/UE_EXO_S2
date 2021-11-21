@@ -1,6 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#define PrintString(String) if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 1.5, FColor::White,String)
+
 #include "CPPProjectCharacter.h"
+#include "CPPProjectGameMode.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -8,6 +11,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "DrawDebugHelpers.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ACPPProjectCharacter
@@ -43,9 +47,64 @@ ACPPProjectCharacter::ACPPProjectCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+	HoldingComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HoldingComponent"));
+	HoldingComponent->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
+
+	CurrentItem = nullptr;
+	bCanMove = true;
+	bInspecting = false;
+
+	//ProjectileSpawn = this->Children;
 }
+
+void ACPPProjectCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+}
+
+void ACPPProjectCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	Start = GetCapsuleComponent()->GetComponentLocation();
+	ForwardVector = GetCapsuleComponent()->GetForwardVector();
+	End = ((ForwardVector * 200.0f) + Start);
+
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
+
+	if(!bHoldingItem)
+	{
+		if(GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, DefaultComponentQueryParams, DefaultResponseParams))
+		{
+			if(Hit.GetActor()->GetClass()->IsChildOf(APickup::StaticClass()))
+			{
+				CurrentItem = Cast<APickup>(Hit.GetActor());
+			}
+		}
+		else
+		{
+			CurrentItem = nullptr;
+		}
+	}
+	
+	if(bInspecting)
+	{
+		if(bHoldingItem)
+		{
+			HoldingComponent->SetRelativeLocation(FVector(0.0f, 50.0f, 50.0f));
+			CurrentItem->RotateActor();
+		}
+	}
+	else
+	{
+		if(bHoldingItem)
+		{
+			HoldingComponent->SetRelativeLocation(FVector(50.0f, 0.0f, 0.0f));
+		}
+	}
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // Input
@@ -57,6 +116,13 @@ void ACPPProjectCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ACPPProjectCharacter::Fire);
+
+	PlayerInputComponent->BindAction("Action", IE_Pressed, this, &ACPPProjectCharacter::OnAction);
+
+	PlayerInputComponent->BindAction("Inspect", IE_Pressed, this, &ACPPProjectCharacter::OnInspect);
+	PlayerInputComponent->BindAction("Inspect", IE_Released, this, &ACPPProjectCharacter::OnInspectReleased);
+	
 	PlayerInputComponent->BindAxis("MoveForward", this, &ACPPProjectCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ACPPProjectCharacter::MoveRight);
 
@@ -112,7 +178,7 @@ void ACPPProjectCharacter::LookUpAtRate(float Rate)
 
 void ACPPProjectCharacter::MoveForward(float Value)
 {
-	if ((Controller != nullptr) && (Value != 0.0f))
+	if ((Controller != nullptr) && (Value != 0.0f) && bCanMove)
 	{
 		// find out which way is forward
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -126,7 +192,7 @@ void ACPPProjectCharacter::MoveForward(float Value)
 
 void ACPPProjectCharacter::MoveRight(float Value)
 {
-	if ( (Controller != nullptr) && (Value != 0.0f) )
+	if ( (Controller != nullptr) && (Value != 0.0f) && bCanMove)
 	{
 		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -138,3 +204,130 @@ void ACPPProjectCharacter::MoveRight(float Value)
 		AddMovementInput(Direction, Value);
 	}
 }
+
+void ACPPProjectCharacter::Fire()
+{
+	if (ProjectileClass)
+	{
+		// Transform MuzzleOffset from camera space to world space.
+		FVector const MuzzleLocation = GetActorLocation() + (GetActorForwardVector() * 100.0f);
+		
+		// Skew the aim to be slightly upwards.
+		FRotator const MuzzleRotation = GetActorRotation();
+
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = GetInstigator();
+
+			// Spawn the projectile at the muzzle.
+			ATPSProjectile* Projectile = World->SpawnActor<ATPSProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+			if (Projectile)
+			{
+				// Set the projectile's initial trajectory.
+				FVector const LaunchDirection = MuzzleRotation.Vector();
+				Projectile->FireInDirection(LaunchDirection);
+			}
+		}
+	}
+}
+
+void ACPPProjectCharacter::OnAction()
+{
+	if(CurrentItem && !bInspecting)
+	{
+		ToggleItemPickup();
+	}
+}
+
+void ACPPProjectCharacter::OnInspect()
+{
+	if(bHoldingItem)
+	{
+		LastRotation = GetControlRotation();
+		ToggleMovement();
+	}
+	else
+	{
+		bInspecting = true;
+	}
+}
+
+void ACPPProjectCharacter::OnInspectReleased()
+{
+	if(bInspecting && bHoldingItem)
+	{
+		GetController()->SetControlRotation(LastRotation);
+		ToggleMovement();
+	}
+	else
+	{
+		bInspecting = false;
+	}
+}
+
+void ACPPProjectCharacter::ToggleMovement()
+{
+	bCanMove = !bCanMove;
+	bInspecting = !bInspecting;
+	CameraBoom->bUsePawnControlRotation = !CameraBoom->bUsePawnControlRotation;
+	bUseControllerRotationYaw = !bUseControllerRotationYaw;
+	
+}
+
+void ACPPProjectCharacter::ToggleItemPickup()
+{
+	if(CurrentItem)
+	{
+		bHoldingItem = !bHoldingItem;
+		CurrentItem->Pickup();
+		CurrentItem->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+		
+		if(!bHoldingItem)
+		{
+			CurrentItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			CurrentItem = nullptr;
+		}
+	}
+}
+
+void ACPPProjectCharacter::SetHealth(int Damage) 
+{
+	Health -= Damage;
+
+	if (Health >= 100)
+		Health = 100;
+	else if (Health < 0)
+		Health = 0;
+}
+
+void ACPPProjectCharacter::Ragdoll()
+{
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetCollisionProfileName("Ragdoll");
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	
+	FTimerHandle handle;
+	GetWorld()->GetTimerManager().SetTimer(handle, [this]()
+	{
+		Destroy();
+	}, DestroyDelay, 0);
+}
+
+void ACPPProjectCharacter::Die()
+{
+	Ragdoll();
+	FTimerHandle handle;
+	GetWorld()->GetTimerManager().SetTimer(handle, [this]()
+	{
+		AGameModeBase* GM = GetWorld()->GetAuthGameMode();
+		if (ACPPProjectGameMode* GameMode = Cast<ACPPProjectGameMode>(GM))
+		{
+			GameMode->OnPlayerKilled(GetController());
+		}
+	}, SpawnDelay, 0);
+}
+

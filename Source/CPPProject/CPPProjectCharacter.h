@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Pickup.h"
+#include "TPSProjectile.h"
 #include "CPPProjectCharacter.generated.h"
 
 UCLASS(config=Game)
@@ -18,6 +20,10 @@ class ACPPProjectCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+	UPROPERTY(EditAnywhere)
+	USceneComponent* HoldingComponent;
+	
 public:
 	ACPPProjectCharacter();
 
@@ -29,8 +35,29 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
-protected:
+	UPROPERTY(EditAnywhere)
+	class APickup* CurrentItem;
 
+	bool bCanMove;
+	bool bHoldingItem;
+	bool bInspecting;
+
+	FVector HoldingComp;
+	FRotator LastRotation;
+
+	FVector Start;
+	FVector ForwardVector;
+	FVector End;
+	FHitResult Hit;
+	FComponentQueryParams DefaultComponentQueryParams;
+	FCollisionResponseParams DefaultResponseParams;
+
+protected:
+	
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaSeconds) override;
+	
 	/** Resets HMD orientation in VR. */
 	void OnResetVR();
 
@@ -58,6 +85,17 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
+	UFUNCTION()
+	void Fire();
+
+	void OnAction();
+
+	void OnInspect();
+	void OnInspectReleased();
+
+	void ToggleMovement();
+	void ToggleItemPickup();
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -68,5 +106,29 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+public:
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	TSubclassOf<class ATPSProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere)
+	float SpawnDelay = 3.0f;
+
+	UPROPERTY(EditAnywhere)
+	float DestroyDelay = 5.0f;
+	
+	UPROPERTY(EditAnywhere)
+	int Health = 100;
+
+	UFUNCTION()
+	void SetHealth(int Damage);
+
+	UFUNCTION()
+	void Ragdoll();
+
+	UFUNCTION()
+	void Die();
+
 };
 
