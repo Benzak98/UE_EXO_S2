@@ -46,11 +46,11 @@ ATPSProjectile::ATPSProjectile()
 		ProjectileMovementComponent->ProjectileGravityScale = 0.2f;
 	}
 
-	static ConstructorHelpers::FObjectFinder<UMaterial>Material(TEXT("[Material'/Game/Materials/M_Projectile.M_Projectile']"));
+	/*static ConstructorHelpers::FObjectFinder<UMaterial>Material(TEXT("[Material'/Game/Materials/M_Projectile.M_Projectile']"));
 	if (Material.Succeeded())
 	{
 		ProjectileMaterialInstance = UMaterialInstanceDynamic::Create(Material.Object, ProjectileMeshComponent);
-	}
+	}*/
 	ProjectileMeshComponent->SetMaterial(0, ProjectileMaterialInstance);
 	ProjectileMeshComponent->SetRelativeScale3D(FVector(0.09f, 0.09f, 0.09f));
 	ProjectileMeshComponent->SetupAttachment(RootComponent);

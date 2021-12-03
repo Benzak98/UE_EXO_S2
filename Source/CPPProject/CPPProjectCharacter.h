@@ -85,6 +85,9 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
+	void CrouchStart();
+	void CrouchEnd();
+
 	UFUNCTION()
 	void Fire();
 

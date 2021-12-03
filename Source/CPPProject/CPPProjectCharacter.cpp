@@ -116,6 +116,9 @@ void ACPPProjectCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ACPPProjectCharacter::CrouchStart);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ACPPProjectCharacter::CrouchEnd);
+
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ACPPProjectCharacter::Fire);
 
 	PlayerInputComponent->BindAction("Action", IE_Pressed, this, &ACPPProjectCharacter::OnAction);
@@ -203,6 +206,16 @@ void ACPPProjectCharacter::MoveRight(float Value)
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
 	}
+}
+
+void ACPPProjectCharacter::CrouchStart()
+{
+	Crouch();
+}
+
+void ACPPProjectCharacter::CrouchEnd()
+{
+	UnCrouch();
 }
 
 void ACPPProjectCharacter::Fire()
