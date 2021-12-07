@@ -67,19 +67,19 @@ void ACPPProjectCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	Start = GetCapsuleComponent()->GetComponentLocation();
-	ForwardVector = GetCapsuleComponent()->GetForwardVector();
-	End = ((ForwardVector * 200.0f) + Start);
+	PickStart = GetCapsuleComponent()->GetComponentLocation();
+	PickForwardVector = GetCapsuleComponent()->GetForwardVector();
+	PickEnd = ((PickForwardVector * 200.0f) + PickStart);
 
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
+	DrawDebugLine(GetWorld(), PickStart, PickEnd, FColor::Green, false, 1, 0, 1);
 
 	if(!bHoldingItem)
 	{
-		if(GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, DefaultComponentQueryParams, DefaultResponseParams))
+		if(GetWorld()->LineTraceSingleByChannel(PickHit, PickStart, PickEnd, ECC_Visibility, DefaultComponentQueryParams, DefaultResponseParams))
 		{
-			if(Hit.GetActor()->GetClass()->IsChildOf(APickup::StaticClass()))
+			if(PickHit.GetActor()->GetClass()->IsChildOf(APickup::StaticClass()))
 			{
-				CurrentItem = Cast<APickup>(Hit.GetActor());
+				CurrentItem = Cast<APickup>(PickHit.GetActor());
 			}
 		}
 		else
@@ -120,6 +120,8 @@ void ACPPProjectCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ACPPProjectCharacter::CrouchEnd);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ACPPProjectCharacter::Fire);
+
+	//PlayerInputComponent->BindAction("GetObject", IE_Pressed, this, &ACPPProjectCharacter::GetObject);
 
 	PlayerInputComponent->BindAction("Action", IE_Pressed, this, &ACPPProjectCharacter::OnAction);
 
@@ -246,6 +248,24 @@ void ACPPProjectCharacter::Fire()
 		}
 	}
 }
+
+/*void ACPPProjectCharacter::GetObject()
+{
+	FVector Start = GetCapsuleComponent()->GetComponentLocation();
+	FVector ForwardVector = GetCapsuleComponent()->GetForwardVector() + FVector(0, 0, -0.5f);
+	FVector End = ((ForwardVector * 300.0f) + Start);
+	FHitResult Hit;
+	FCollisionShape Sphere;
+	Sphere.SetSphere(50.0f);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Black, false, 1, 0, 1);
+	if(GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Visibility, Sphere, DefaultComponentQueryParams, DefaultResponseParams))
+	{
+		if(Hit.GetActor()->GetClass()->IsChildOf())
+		{
+			PrintString("Sa cast");
+		}
+	}
+}*/
 
 void ACPPProjectCharacter::OnAction()
 {

@@ -45,10 +45,10 @@ public:
 	FVector HoldingComp;
 	FRotator LastRotation;
 
-	FVector Start;
-	FVector ForwardVector;
-	FVector End;
-	FHitResult Hit;
+	FVector PickStart;
+	FVector PickForwardVector;
+	FVector PickEnd;
+	FHitResult PickHit;
 	FComponentQueryParams DefaultComponentQueryParams;
 	FCollisionResponseParams DefaultResponseParams;
 
@@ -90,6 +90,8 @@ protected:
 
 	UFUNCTION()
 	void Fire();
+
+	//void GetObject();
 
 	void OnAction();
 
