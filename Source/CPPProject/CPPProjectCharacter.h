@@ -123,7 +123,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	float DestroyDelay = 5.0f;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int Health = 100;
 
 	UFUNCTION()
